@@ -31,7 +31,7 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-const BACKEND_URL = 'http://localhost:5000';
+const BACKEND_URL = 'https://whatsbot-2uw3.onrender.com';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
