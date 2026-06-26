@@ -11,6 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// 🌟 पोर्ट को डायनामिक बनाया (Render के लिए अनिवार्य)
+const PORT = process.env.PORT || 5000;
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
     filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
@@ -24,7 +27,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath, { index: 'index.html' }));
 
-
 // Root fallback (Express 'cannot GET /' fix in packaged mode)
 app.get('/', (req, res) => {
     const indexPath = path.join(distPath, 'index.html');
@@ -32,7 +34,6 @@ app.get('/', (req, res) => {
     // If index.html not found, return a clear debug message
     return res.status(404).send(`index.html not found. Expected: ${indexPath}`);
 });
-
 
 if (!fs.existsSync('./uploads')){
     fs.mkdirSync('./uploads');
@@ -261,17 +262,25 @@ app.delete('/api/config/roster/:index', (req, res) => {
     dbData.roster = dbData.roster.filter((_, i) => i !== idx);
     res.json({ success: true, roster: dbData.roster });
 });
+
+// 🌟 संशोधित PDF API: localhost हटाकर लाइव डोमेन यूआरएल को डायनामिक किया
 app.post('/api/config/pdf', upload.single('pdf'), (req, res) => {
     if (!req.file) return res.status(400).json({ success: false });
     const { keyNum, title } = req.body;
     const fileUrl = `/uploads/${req.file.filename}`;
-    const fullLiveUrl = `http://localhost:5000${fileUrl}`;
+    
+    // वर्तमान रिक्वेस्ट हेडर से डोमेन (जैसे: whatsbot-2uw3.onrender.com) उठाएं
+    const host = req.get('host'); 
+    const protocol = req.protocol; 
+    const fullLiveUrl = `${protocol}://${host}${fileUrl}`;
+    
     dbData.pdfs = dbData.pdfs.filter(p => p.keyNum !== keyNum);
     dbData.pdfs.push({ keyNum, title, url: fileUrl });
     dbData.keywords = dbData.keywords.filter(k => k.key !== keyNum);
     dbData.keywords.push({ key: keyNum, purpose: `PDF: ${title}`, reply: `📄 *साप्ताहिक ड्यूटी शेड्यूल लिंक:* \n${fullLiveUrl}` });
     res.json({ success: true, pdfs: dbData.pdfs, keywords: dbData.keywords });
 });
+
 app.delete('/api/config/pdf/:keyNum', (req, res) => {
     const { keyNum } = req.params;
     dbData.pdfs = dbData.pdfs.filter(p => p.keyNum !== keyNum);
@@ -300,7 +309,5 @@ app.post('/api/broadcast-excel', async (req, res) => {
     }
 });
 
-// 🌟 SPA fallback रूट: fallback के लिए express wildcard route disable (path-to-regexp parsing crash fix)
-// नोट: SPA frontend direct open करने पर index.html static से serve होगा।
-
-app.listen(5000, () => console.log('🚀 बैकएंड सर्वर पोर्ट 5000 पर शानदार चल रहा है।'));
+// 🌟 सर्वर को पर्यावरण (Environment) या डिफ़ॉल्ट पोर्ट पर शुरू करें
+app.listen(PORT, () => console.log(`🚀 बैकएंड सर्वर पोर्ट ${PORT} पर शानदार चल रहा है।`));
